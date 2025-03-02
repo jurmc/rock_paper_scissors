@@ -2,7 +2,11 @@ use raylib::prelude::*;
 use raylib::consts;
 use raylib::core::color;
 
+use ecs::Entity;
+
 fn main() {
+    let e: Entity = 1;
+
     let (w, h) = (640, 480);
     let mut ball_pos = (w / 2, h / 2);
     let font_size = 20;

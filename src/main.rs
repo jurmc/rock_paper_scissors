@@ -24,7 +24,14 @@ fn main() {
     let y_min = 12.0;
     let y_max = h as f64 - 12.0 - font_size as f64;
 
+    let mut wheel_v = Vector2 { x: (w / 4) as f32, y: (h / 4) as f32 };
+    let wheel_speed = 4f32;
+
     while !rl.window_should_close() {
+
+        let wheel_move_v = rl.get_mouse_wheel_move_v();
+        println!("wheel_move_v: {:?}", wheel_move_v);
+        (wheel_v.x, wheel_v.y) = (wheel_v.x + wheel_move_v.x, wheel_v.y + wheel_move_v.y);
 
         if rl.is_key_down(KeyboardKey::KEY_RIGHT) {
             if !(ball_pos.0 >= (w)) {
@@ -52,6 +59,7 @@ fn main() {
         let mouse_pos = rl.get_mouse_position();
         let mut d = rl.begin_drawing(&thread);
 
+        d.draw_rectangle_v(wheel_v, Vector2 { x: wheel_v.x + wheel_speed * 10f32, y: wheel_v.y + wheel_speed * 10f32}, Color::YELLOWGREEN);
         d.draw_circle(ball_pos.0, ball_pos.1, 10f32, Color::MAROON);
         d.clear_background(Color::WHITE);
         d.draw_text("Hello", x.round() as i32, y.round() as i32, font_size, Color::BLACK);

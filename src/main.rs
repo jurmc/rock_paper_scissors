@@ -1,11 +1,79 @@
+use ecs::Entity; // TODO: remove coordinatro from this path
+use ecs::coordinator::Coordinator; // TODO: remove coordinatro from this path
+use ecs::component::ComponentManager; // TODO: remove component from this path
+use ecs::system::System;           // TODO: remove system from this path
+
 use raylib::prelude::*;
 use raylib::consts;
 use raylib::core::color;
 
-use ecs::Entity;
+use std::collections::HashSet;
+use std::any::TypeId;
+
+
+pub struct Render {
+    entities: HashSet<Entity>,
+    component_types: HashSet<TypeId>,
+}
+
+impl Render {
+    pub fn new() -> Render {
+        Render {
+            entities: HashSet::new(),
+            component_types: HashSet::new(),
+        }
+    }
+}
+
+impl System for Render {
+    fn add(&mut self, e: Entity) {
+        self.entities.insert(e);
+    }
+    fn remove(&mut self, e: Entity) {
+        // TODO: not implemented
+    }
+
+    fn get_component_types(&self) -> &HashSet<TypeId> {
+        &self.component_types
+    }
+
+    fn apply(&self, cm: &mut ComponentManager) {
+        println!("Apply for Render");
+        for e in self.entities.iter() {
+            println!(" e: {}", e);
+        }
+    }
+}
+
+
+fn do_sth_with_ecs() {
+    let mut c = Coordinator::new();
+    let e1 = c.get_entity();
+
+    // TODO: see todo below
+    //let render_sys = Render::new();
+    //c.register_system(render_sys);
+
+    c.register_component::<i32>();
+    c.register_component::<f32>();
+    c.add_component(e1, 1i32);
+    c.add_component(e1, 2f32);
+
+    // TODO: fix in ECS needed: registering system later than components for
+    // which this system is interested in causes these componets are missing
+    // in sys own list of entities
+    let render_sys = Render::new();
+    c.register_system(render_sys);
+
+    c.kick_all_systems();
+    c.kick_all_systems();
+    c.kick_all_systems();
+    c.kick_all_systems();
+    c.kick_all_systems();
+}
 
 fn main() {
-    let e: Entity = 1;
+    do_sth_with_ecs();
 
     let (w, h) = (640, 480);
     let mut ball_pos = (w / 2, h / 2);
@@ -34,7 +102,6 @@ fn main() {
     while !rl.window_should_close() {
 
         let wheel_move_v = rl.get_mouse_wheel_move_v();
-        println!("wheel_move_v: {:?}", wheel_move_v);
         (wheel_v.x, wheel_v.y) = (wheel_v.x + wheel_move_v.x, wheel_v.y + wheel_move_v.y);
 
         if rl.is_key_down(KeyboardKey::KEY_RIGHT) {

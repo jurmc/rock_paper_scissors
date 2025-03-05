@@ -49,19 +49,16 @@ impl Render {
         (render, screen)
     }
 
-    pub fn init(&mut self, screen: &Screen) { // TODO: maybe should be parto of new()
-        let mut ball_pos = (screen.width / 2, screen.height / 2);
+    pub fn do_loop(&mut self, screen: &Screen) {
         let font_size = 20;
-
-        let (mut cnt_x, mut cnt_y) = (0.0, 0.0);
-
         let y_min = 12.0;
         let y_max = screen.height as f64 - 12.0 - font_size as f64;
-
-        let mut wheel_v = Vector2 { x: (screen.width / 4) as f32, y: (screen.height / 4) as f32 };
         let wheel_speed = 4f32;
 
-        // Extracto to LOOP
+        let mut ball_pos = (screen.width / 2, screen.height / 2);
+        let (mut cnt_x, mut cnt_y) = (0.0, 0.0);
+        let mut wheel_v = Vector2 { x: (screen.width / 4) as f32, y: (screen.height / 4) as f32 };
+
         let rl = &mut self.rl;
         let thread = &self.raylib_thread;
         while !rl.window_should_close() {
@@ -141,8 +138,7 @@ fn main() {
     // which this system is interested in, causes these componets are missing
     // in sys own list of entities
     let (mut render_sys, screen) = Render::new();
-
-    render_sys.init(&screen);
+    render_sys.do_loop(&screen);
 
     c.register_system(render_sys);
 

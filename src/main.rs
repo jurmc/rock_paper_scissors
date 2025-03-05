@@ -10,52 +10,67 @@ use raylib::core::color;
 use std::collections::HashSet;
 use std::any::TypeId;
 
+pub struct Screen {
+    width: i32,
+    height: i32
+}
 
 pub struct Render {
     entities: HashSet<Entity>,
     component_types: HashSet<TypeId>,
+
+    pub rl: RaylibHandle,
+    pub raylib_thread: RaylibThread,
 }
 
 impl Render {
-    pub fn new() -> Render {
-        Render {
-            entities: HashSet::new(),
-            component_types: HashSet::new(),
-        }
-    }
-
-    pub fn init(&self) { // TODO: maybe should be parto of new()
-        let (w, h) = (640, 480);
-        let mut ball_pos = (w / 2, h / 2);
-        let font_size = 20;
-
-        let (mut rl, thread) = raylib::init()
-            .size(w, h)
-            .title("RenderSystem: Hello, World")
+    pub fn new() -> (Render, Screen) {
+        let (width, height) = (640, 480);
+        let (mut rl, raylib_thread) = raylib::init()
+            .size(width, height)
+            .title("RenderSystem1")
             .build();
 
         rl.set_target_fps(60);
 
+        let render = Render {
+            entities: HashSet::new(),
+            component_types: HashSet::new(),
+
+            rl,
+            raylib_thread,
+        };
+
+        let screen = Screen {
+            width,
+            height,
+        };
+
+        (render, screen)
+    }
+
+    pub fn init(&mut self, screen: &Screen) { // TODO: maybe should be parto of new()
+        let mut ball_pos = (screen.width / 2, screen.height / 2);
+        let font_size = 20;
+
         let (mut cnt_x, mut cnt_y) = (0.0, 0.0);
 
-        let x_min = 12.0;
-        let x_max = w as f64 - 12.0 - (12 * font_size) as f64;
-
-        println!("x_min: {}, x_max: {}", x_min, x_max);
-
         let y_min = 12.0;
-        let y_max = h as f64 - 12.0 - font_size as f64;
+        let y_max = screen.height as f64 - 12.0 - font_size as f64;
 
-        let mut wheel_v = Vector2 { x: (w / 4) as f32, y: (h / 4) as f32 };
+        let mut wheel_v = Vector2 { x: (screen.width / 4) as f32, y: (screen.height / 4) as f32 };
         let wheel_speed = 4f32;
 
+        // Extracto to LOOP
+        let rl = &mut self.rl;
+        let thread = &self.raylib_thread;
         while !rl.window_should_close() {
 
             let wheel_move_v = rl.get_mouse_wheel_move_v();
             (wheel_v.x, wheel_v.y) = (wheel_v.x + wheel_move_v.x, wheel_v.y + wheel_move_v.y);
 
             if rl.is_key_down(KeyboardKey::KEY_RIGHT) {
-                if !(ball_pos.0 >= (w)) {
+                if !(ball_pos.0 >= (screen.width)) {
                     ball_pos.0 += 2;
                 }
             }
@@ -70,12 +85,12 @@ impl Render {
                 }
             }
             if rl.is_key_down(KeyboardKey::KEY_DOWN) {
-                if !(ball_pos.1 >= h) {
+                if !(ball_pos.1 >= screen.height) {
                     ball_pos.1 += 2;
                 }
             }
 
-            let x = (w - 50) as f64 / 2f64 + ((w as f64 / 2f64)-30f64)*(((3.14*cnt_x/360f64) as f64).sin());
+            let x = (screen.width - 50) as f64 / 2f64 + ((screen.width as f64 / 2f64)-30f64)*(((3.14*cnt_x/360f64) as f64).sin());
             let y = (y_min + (y_max - y_min)*((2f64*3.14f64 * cnt_y / 360.0).cos())).abs();
             let mouse_pos = rl.get_mouse_position();
             let mut d = rl.begin_drawing(&thread);
@@ -117,20 +132,18 @@ fn main() {
     let mut c = Coordinator::new();
     let e1 = c.get_entity();
 
-    // TODO: see todo below
-    //let render_sys = Render::new();
-    //c.register_system(render_sys);
-
     c.register_component::<i32>();
     c.register_component::<f32>();
     c.add_component(e1, 1i32);
     c.add_component(e1, 2f32);
 
-    // TODO: fix in ECS needed: registering system later than components for
-    // which this system is interested in causes these componets are missing
+    // TODO: fix in ECS needed: registering system later, than components for
+    // which this system is interested in, causes these componets are missing
     // in sys own list of entities
-    let render_sys = Render::new();
-    render_sys.init();
+    let (mut render_sys, screen) = Render::new();
+
+    render_sys.init(&screen);
+
     c.register_system(render_sys);
 
     c.kick_all_systems();

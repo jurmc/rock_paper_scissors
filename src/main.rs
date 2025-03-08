@@ -105,6 +105,8 @@ impl System for Render {
                                   // outside world...
         }
 
+        // TODO: point of focus: extract below code into separate system and components
+
         let wheel_move_v = self.rl.get_mouse_wheel_move_v();
         (self.temp_c.wheel_v.x, self.temp_c.wheel_v.y) = (self.temp_c.wheel_v.x + wheel_move_v.x, self.temp_c.wheel_v.y + wheel_move_v.y);
 

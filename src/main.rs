@@ -100,52 +100,49 @@ impl System for Render {
     }
 
     fn apply(&mut self, cm: &mut ComponentManager) {
-        println!("Apply for Render");
-        for e in self.entities.iter() {
-            println!(" e: {}", e);
+        if self.rl.window_should_close() {
+            panic!("Exitted..."); // TODO: this condition should rather be somehow signalled to the
+                                  // outside world...
         }
 
-        {
+        let wheel_move_v = self.rl.get_mouse_wheel_move_v();
+        (self.temp_c.wheel_v.x, self.temp_c.wheel_v.y) = (self.temp_c.wheel_v.x + wheel_move_v.x, self.temp_c.wheel_v.y + wheel_move_v.y);
 
-            let wheel_move_v = self.rl.get_mouse_wheel_move_v();
-            (self.temp_c.wheel_v.x, self.temp_c.wheel_v.y) = (self.temp_c.wheel_v.x + wheel_move_v.x, self.temp_c.wheel_v.y + wheel_move_v.y);
-
-            if self.rl.is_key_down(KeyboardKey::KEY_RIGHT) {
-                if !(self.temp_c.ball_pos.0 >= (self.screen.width)) {
-                    self.temp_c.ball_pos.0 += 2;
-                }
+        if self.rl.is_key_down(KeyboardKey::KEY_RIGHT) {
+            if !(self.temp_c.ball_pos.0 >= (self.screen.width)) {
+                self.temp_c.ball_pos.0 += 2;
             }
-            if self.rl.is_key_down(KeyboardKey::KEY_LEFT) {
-                if !(self.temp_c.ball_pos.0 <= 0) {
-                    self.temp_c.ball_pos.0 -= 2;
-                }
-            }
-            if self.rl.is_key_down(KeyboardKey::KEY_UP) {
-                if !(self.temp_c.ball_pos.1 <= 0) {
-                    self.temp_c.ball_pos.1 -= 2;
-                }
-            }
-            if self.rl.is_key_down(KeyboardKey::KEY_DOWN) {
-                if !(self.temp_c.ball_pos.1 >= self.screen.height) {
-                    self.temp_c.ball_pos.1 += 2;
-                }
-            }
-
-            let x = (self.screen.width - 50) as f64 / 2f64 + ((self.screen.width as f64 / 2f64)-30f64)*(((3.14*self.temp_c.cnt_x/360f64) as f64).sin());
-            let y = (self.temp_c.y_min + (self.temp_c.y_max - self.temp_c.y_min)*((2f64*3.14f64 * self.temp_c.cnt_y / 360.0).cos())).abs();
-            let mouse_pos = self.rl.get_mouse_position();
-            let mut d = self.rl.begin_drawing(&self.raylib_thread);
-
-            d.draw_rectangle_v(self.temp_c.wheel_v, Vector2 { x: self.temp_c.wheel_v.x + self.temp_c.wheel_speed * 10f32, y: self.temp_c.wheel_v.y + self.temp_c.wheel_speed * 10f32}, Color::YELLOWGREEN);
-            d.draw_circle(self.temp_c.ball_pos.0, self.temp_c.ball_pos.1, 10f32, Color::MAROON);
-            d.clear_background(Color::WHITE);
-            d.draw_text("Hello", x.round() as i32, y.round() as i32, self.temp_c.font_size, Color::BLACK);
-
-            d.draw_circle_v(mouse_pos, 20f32, Color::BLUE);
-
-            self.temp_c.cnt_x += 2.0 * 1.7;
-            self.temp_c.cnt_y += 4.0 * 1.0;
         }
+        if self.rl.is_key_down(KeyboardKey::KEY_LEFT) {
+            if !(self.temp_c.ball_pos.0 <= 0) {
+                self.temp_c.ball_pos.0 -= 2;
+            }
+        }
+        if self.rl.is_key_down(KeyboardKey::KEY_UP) {
+            if !(self.temp_c.ball_pos.1 <= 0) {
+                self.temp_c.ball_pos.1 -= 2;
+            }
+        }
+        if self.rl.is_key_down(KeyboardKey::KEY_DOWN) {
+            if !(self.temp_c.ball_pos.1 >= self.screen.height) {
+                self.temp_c.ball_pos.1 += 2;
+            }
+        }
+
+        let x = (self.screen.width - 50) as f64 / 2f64 + ((self.screen.width as f64 / 2f64)-30f64)*(((3.14*self.temp_c.cnt_x/360f64) as f64).sin());
+        let y = (self.temp_c.y_min + (self.temp_c.y_max - self.temp_c.y_min)*((2f64*3.14f64 * self.temp_c.cnt_y / 360.0).cos())).abs();
+        let mouse_pos = self.rl.get_mouse_position();
+        let mut d = self.rl.begin_drawing(&self.raylib_thread);
+
+        d.draw_rectangle_v(self.temp_c.wheel_v, Vector2 { x: self.temp_c.wheel_v.x + self.temp_c.wheel_speed * 10f32, y: self.temp_c.wheel_v.y + self.temp_c.wheel_speed * 10f32}, Color::YELLOWGREEN);
+        d.draw_circle(self.temp_c.ball_pos.0, self.temp_c.ball_pos.1, 10f32, Color::MAROON);
+        d.clear_background(Color::WHITE);
+        d.draw_text("Hello", x.round() as i32, y.round() as i32, self.temp_c.font_size, Color::BLACK);
+
+        d.draw_circle_v(mouse_pos, 20f32, Color::BLUE);
+
+        self.temp_c.cnt_x += 2.0 * 1.7;
+        self.temp_c.cnt_y += 4.0 * 1.0;
     }
 }
 
@@ -161,9 +158,6 @@ fn main() {
     let render_sys = Render::new();
     c.register_system(render_sys);
 
-    // TODO: point of focus
-    //       we have to check "windows_should_close()" and have possibility to
-    //       exit loop below
     loop {
         c.kick_all_systems();
     }

@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-raylib = { git = "https://github.com/raylib-rs/raylib-rs.git" }
-#raylib = { git = "https://github.com/raylib-rs/raylib-rs.git", features = ["opengl_21"] }
+#raylib = { git = "https://github.com/raylib-rs/raylib-rs.git" }
+raylib = { git = "https://github.com/raylib-rs/raylib-rs.git", features = ["opengl_21"] }
 ecs = { git = "https://github.com/jurmc/ecs.git" }

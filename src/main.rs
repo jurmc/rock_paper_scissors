@@ -7,6 +7,40 @@ use raylib::prelude::*;
 
 use std::collections::HashSet;
 use std::any::TypeId;
+use std::fmt;
+
+#[derive(Debug)]
+pub struct Coords {
+    x: i32,
+    y: i32,
+}
+
+impl fmt::Display for Coords {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "x: {}, y: {}", self.x, self.y)
+    }
+}
+
+pub struct MyColor {
+    c: Color,
+}
+
+impl fmt::Display for MyColor {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "c")
+    }
+}
+
+struct Velocity {
+    vx: f64,
+    vy: f64,
+}
+
+impl fmt::Display for Velocity {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "vx: {}, vy: {}", self.vx, self.vy)
+    }
+}
 
 pub struct Screen {
     width: i32,
@@ -14,15 +48,46 @@ pub struct Screen {
 }
 
 struct TempContainer {
-    font_size: i32,
-    y_min: f64,
-    y_max: f64,
-    wheel_speed: f32,
-
     ball_pos: (i32, i32),
-    cnt_x: f64,
-    cnt_y: f64,
-    wheel_v: Vector2,
+}
+
+pub struct IntegrateVelocity {
+    entities: HashSet<Entity>,
+    component_types: HashSet<TypeId>,
+}
+
+impl IntegrateVelocity {
+    pub fn new() -> IntegrateVelocity {
+        IntegrateVelocity {
+            entities: HashSet::new(),
+            component_types: HashSet::new(),
+        }
+    }
+}
+
+impl System for IntegrateVelocity {
+    fn add(&mut self, e: Entity) {
+        self.entities.insert(e);
+    }
+    fn remove(&mut self, e: Entity) {
+        // TODO: not implemented
+    }
+
+    fn get_component_types(&self) -> &HashSet<TypeId> {
+        &self.component_types
+    }
+
+    fn apply(&mut self, cm: &mut ComponentManager) {
+        for e in self.entities.iter() {
+            if let Some(v) = cm.get::<Velocity>(e) {
+                let v = Velocity {vx: v.vx, vy: v.vy};
+                if let Some(c) = cm.get::<Coords>(e) {
+                    let new_coords = Coords { x: c.x + v.vx.round() as i32, y: c.y + v.vy.round() as i32 };
+                    cm.add(*e, new_coords);
+                }
+            }
+        }
+    }
 }
 
 pub struct Render {
@@ -51,24 +116,10 @@ impl Render {
             height,
         };
 
-        let font_size = 20;
-        let y_min = 12.0;
-        let y_max = screen.height as f64 - 12.0 - font_size as f64;
-        let wheel_speed = 4f32;
-
         let ball_pos = (screen.width / 2, screen.height / 2);
-        let wheel_v = Vector2 { x: (screen.width / 4) as f32, y: (screen.height / 4) as f32 };
 
         let temp_c = TempContainer {
-            font_size,
-            y_min,
-            y_max,
-            wheel_speed,
-
             ball_pos,
-            cnt_x: 0f64,
-            cnt_y: 0f64,
-            wheel_v,
         };
 
 
@@ -106,9 +157,9 @@ impl System for Render {
         }
 
         // TODO: point of focus: extract below code into separate system and components
+        // ONGOING
 
         let wheel_move_v = self.rl.get_mouse_wheel_move_v();
-        (self.temp_c.wheel_v.x, self.temp_c.wheel_v.y) = (self.temp_c.wheel_v.x + wheel_move_v.x, self.temp_c.wheel_v.y + wheel_move_v.y);
 
         if self.rl.is_key_down(KeyboardKey::KEY_RIGHT) {
             if !(self.temp_c.ball_pos.0 >= (self.screen.width)) {
@@ -131,34 +182,48 @@ impl System for Render {
             }
         }
 
-        let x = (self.screen.width - 50) as f64 / 2f64 + ((self.screen.width as f64 / 2f64)-30f64)*(((3.14*self.temp_c.cnt_x/360f64) as f64).sin());
-        let y = (self.temp_c.y_min + (self.temp_c.y_max - self.temp_c.y_min)*((2f64*3.14f64 * self.temp_c.cnt_y / 360.0).cos())).abs();
         let mouse_pos = self.rl.get_mouse_position();
         let mut d = self.rl.begin_drawing(&self.raylib_thread);
 
-        d.draw_rectangle_v(self.temp_c.wheel_v, Vector2 { x: self.temp_c.wheel_v.x + self.temp_c.wheel_speed * 10f32, y: self.temp_c.wheel_v.y + self.temp_c.wheel_speed * 10f32}, Color::YELLOWGREEN);
         d.draw_circle(self.temp_c.ball_pos.0, self.temp_c.ball_pos.1, 10f32, Color::MAROON);
         d.clear_background(Color::WHITE);
-        d.draw_text("Hello", x.round() as i32, y.round() as i32, self.temp_c.font_size, Color::BLACK);
 
         d.draw_circle_v(mouse_pos, 20f32, Color::BLUE);
 
-        self.temp_c.cnt_x += 2.0 * 1.7;
-        self.temp_c.cnt_y += 4.0 * 1.0;
+        for e in self.entities.iter() {
+            let c = cm.get::<Coords>(&e);
+            if let Some(c) = c {
+                let c = Coords {x: c.x, y: c.y};
+                let color = match cm.get::<MyColor>(&e) {
+                    Some(color) => color,
+                    None => &mut MyColor { c: Color::CYAN},
+                };
+                d.draw_circle(c.x, c.y, 5f32, color.c);
+            }
+        }
+
     }
 }
 
 fn main() {
     let mut c = Coordinator::new();
     let e1 = c.get_entity();
+    let e2 = c.get_entity();
 
-    c.register_component::<i32>();
-    c.register_component::<f32>();
-    c.add_component(e1, 1i32);
-    c.add_component(e1, 2f32);
+    c.register_system(Render::new()); // TODO: this block of registered systems should
+                                      // also work if move after block of registered component
+                                      // types, and adding components to coordinato
+    c.register_system(IntegrateVelocity::new());
 
-    let render_sys = Render::new();
-    c.register_system(render_sys);
+    c.register_component::<Coords>();
+    c.register_component::<MyColor>();
+    c.register_component::<Velocity>();
+
+    c.add_component(e1, Coords{x: 20, y: 30});
+    c.add_component(e1, MyColor {c: Color::RED});
+
+    c.add_component(e2, Coords{x: 20, y: 60});
+    c.add_component(e2, Velocity{vx: 1f64, vy: 2f64});
 
     loop {
         c.kick_all_systems();

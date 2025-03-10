@@ -7,7 +7,6 @@ use raylib::prelude::*;
 
 use std::collections::HashSet;
 use std::any::TypeId;
-use std::fmt;
 
 #[derive(Debug)]
 pub struct Coords {
@@ -15,31 +14,13 @@ pub struct Coords {
     y: i32,
 }
 
-impl fmt::Display for Coords {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "x: {}, y: {}", self.x, self.y)
-    }
-}
-
 pub struct MyColor {
     c: Color,
-}
-
-impl fmt::Display for MyColor {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "c")
-    }
 }
 
 struct Velocity {
     vx: f64,
     vy: f64,
-}
-
-impl fmt::Display for Velocity {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "vx: {}, vy: {}", self.vx, self.vy)
-    }
 }
 
 pub struct Screen {
@@ -226,6 +207,6 @@ fn main() {
     c.add_component(e2, Velocity{vx: 1f64, vy: 2f64});
 
     loop {
-        c.kick_all_systems();
+        c.apply_all();
     }
 }

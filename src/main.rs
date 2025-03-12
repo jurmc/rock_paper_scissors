@@ -1,12 +1,15 @@
 use ecs::Entity;
 use ecs::coordinator::Coordinator;    // TODO: remove coordinatro from this path
 use ecs::component::ComponentManager; // TODO: remove component from this path
+use ecs::ComponentType;
 use ecs::system::System;              // TODO: remove system from this path
 
 use raylib::prelude::*;
 
 use std::collections::HashSet;
 use std::any::TypeId;
+
+
 
 #[derive(Debug)]
 pub struct Coords {
@@ -71,26 +74,48 @@ impl System for IntegrateVelocity {
     }
 }
 
+pub struct RayLibData {
+    rl: RaylibHandle,
+    raylib_thread: RaylibThread,
+    screen: Screen,
+}
+
+impl RayLibData {
+    pub fn new(width: i32, height: i32) -> RayLibData {
+        let (mut rl, raylib_thread) = raylib::init()
+            .size(width, height)
+            .title("RenderSystem1")
+            .build();
+
+        let screen = Screen {
+            width,
+            height,
+        };
+
+        RayLibData {
+            rl,
+            raylib_thread,
+            screen,
+        }
+    }
+}
+
 pub struct Render {
     entities: HashSet<Entity>,
     component_types: HashSet<TypeId>,
 
-    pub rl: RaylibHandle,
-    pub raylib_thread: RaylibThread,
+    rl_data: RayLibData,
 
-    screen: Screen,
     temp_c: TempContainer,
 }
 
 impl Render {
     pub fn new() -> Render {
         let (width, height) = (640, 480);
-        let (mut rl, raylib_thread) = raylib::init()
-            .size(width, height)
-            .title("RenderSystem1")
-            .build();
 
-        rl.set_target_fps(5);
+        let mut rl_data = RayLibData::new(width, height);
+
+        rl_data.rl.set_target_fps(5);
 
         let screen = Screen {
             width,
@@ -108,9 +133,7 @@ impl Render {
             entities: HashSet::new(),
             component_types: HashSet::new(),
 
-            rl,
-            raylib_thread,
-            screen,
+            rl_data,
 
             temp_c,
         };
@@ -132,7 +155,14 @@ impl System for Render {
     }
 
     fn apply(&mut self, cm: &mut ComponentManager) {
-        if self.rl.window_should_close() {
+        ////
+        ////let mut rl_data = cm.get::<RayLibData>();
+        //if rl_data = None {
+        //    println!("RayLibData not initialized. Cannot render...");
+        //    return;
+        //}
+        /////
+        if self.rl_data.rl.window_should_close() {
             panic!("Exitted..."); // TODO: this condition should rather be somehow signalled to the
                                   // outside world...
         }
@@ -140,31 +170,31 @@ impl System for Render {
         // TODO: point of focus: extract below code into separate system and components
         // ONGOING
 
-        let wheel_move_v = self.rl.get_mouse_wheel_move_v();
+        let wheel_move_v = self.rl_data.rl.get_mouse_wheel_move_v();
 
-        if self.rl.is_key_down(KeyboardKey::KEY_RIGHT) {
-            if !(self.temp_c.ball_pos.0 >= (self.screen.width)) {
+        if self.rl_data.rl.is_key_down(KeyboardKey::KEY_RIGHT) {
+            if !(self.temp_c.ball_pos.0 >= (self.rl_data.screen.width)) {
                 self.temp_c.ball_pos.0 += 2;
             }
         }
-        if self.rl.is_key_down(KeyboardKey::KEY_LEFT) {
+        if self.rl_data.rl.is_key_down(KeyboardKey::KEY_LEFT) {
             if !(self.temp_c.ball_pos.0 <= 0) {
                 self.temp_c.ball_pos.0 -= 2;
             }
         }
-        if self.rl.is_key_down(KeyboardKey::KEY_UP) {
+        if self.rl_data.rl.is_key_down(KeyboardKey::KEY_UP) {
             if !(self.temp_c.ball_pos.1 <= 0) {
                 self.temp_c.ball_pos.1 -= 2;
             }
         }
-        if self.rl.is_key_down(KeyboardKey::KEY_DOWN) {
-            if !(self.temp_c.ball_pos.1 >= self.screen.height) {
+        if self.rl_data.rl.is_key_down(KeyboardKey::KEY_DOWN) {
+            if !(self.temp_c.ball_pos.1 >= self.rl_data.screen.height) {
                 self.temp_c.ball_pos.1 += 2;
             }
         }
 
-        let mouse_pos = self.rl.get_mouse_position();
-        let mut d = self.rl.begin_drawing(&self.raylib_thread);
+        let mouse_pos = self.rl_data.rl.get_mouse_position();
+        let mut d = self.rl_data.rl.begin_drawing(&self.rl_data.raylib_thread);
 
         d.draw_circle(self.temp_c.ball_pos.0, self.temp_c.ball_pos.1, 10f32, Color::MAROON);
         d.clear_background(Color::WHITE);
@@ -186,6 +216,44 @@ impl System for Render {
     }
 }
 
+pub struct MouseInput {
+    entities: HashSet<Entity>,
+    component_types: HashSet<TypeId>,
+}
+
+impl MouseInput {
+    pub fn new() -> MouseInput {
+        MouseInput {
+            entities: HashSet::new(),
+            component_types: HashSet::from_iter(vec![ComponentType::of::<Coords>()]),
+        }
+    }
+}
+
+impl System for MouseInput {
+    fn add(&mut self, e: Entity) {
+        self.entities.insert(e);
+    }
+    fn remove(&mut self, e: Entity) {
+        // TODO: not implemented
+    }
+
+    fn get_component_types(&self) -> &HashSet<TypeId> {
+        &self.component_types
+    }
+
+    fn apply(&mut self, cm: &mut ComponentManager) {
+//        let mouse_pos = self.rl.get_mouse_position();
+        //d.draw_circle_v(mouse_pos, 20f32, Color::BLUE);
+//        let coords = Coords {mouse_pos.};
+//
+//        for e in self.entities.iter() {
+//            let coords = cm.get::<Coords>(e);
+//            cm.add
+//        }
+
+    }
+}
 fn main() {
     let mut c = Coordinator::new();
     let e1 = c.get_entity();

@@ -242,7 +242,12 @@ impl System for MouseInput {
     }
 
     fn apply(&mut self, cm: &mut ComponentManager) {
-        println!("mouse input: apply, array");
+        let mut mouse_coords = cm.get_global::<Coords>(1).unwrap();
+
+        println!("mouse input, coords {:?}", mouse_coords);
+
+        mouse_coords.x += 1;
+        mouse_coords.y += 1;
 //        let mouse_pos = self.rl.get_mouse_position();
         //d.draw_circle_v(mouse_pos, 20f32, Color::BLUE);
 //        let coords = Coords {mouse_pos.};
@@ -256,6 +261,13 @@ impl System for MouseInput {
 }
 fn main() {
     let mut c = Coordinator::new();
+
+//    let (width, height) = (640, 480);
+//    let mut rl_data = RayLibData::new(width, height);
+
+    let mouse_coords = Coords { x: 0, y: 0 }; // TODO: remove this
+    c.add_global(1, mouse_coords);           // TODO: remove this
+
     let e1 = c.get_entity();
     let e2 = c.get_entity();
 

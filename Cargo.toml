@@ -6,4 +6,5 @@ edition = "2021"
 [dependencies]
 #raylib = { git = "https://github.com/raylib-rs/raylib-rs.git" }
 raylib = { git = "https://github.com/raylib-rs/raylib-rs.git", features = ["opengl_21"] }
-ecs = { git = "https://github.com/jurmc/ecs.git" }
+ecs = { git = "https://github.com/jurmc/ecs.git", branch="add-global-mutable-state-to-ecs-or-to-this-demo-only" }
+

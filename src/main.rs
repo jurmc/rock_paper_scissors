@@ -10,6 +10,8 @@ use std::collections::HashSet;
 use std::any::TypeId;
 use std::sync::{Mutex, LazyLock};
 
+// TODO: all geters in ECS needs to have mutable and imutable versions
+
 pub struct RayLibData {
     rl: RaylibHandle,
     raylib_thread: RaylibThread,

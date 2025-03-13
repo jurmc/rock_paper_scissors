@@ -103,7 +103,7 @@ pub struct Render {
     entities: HashSet<Entity>,
     component_types: HashSet<TypeId>,
 
-    rl_data: RayLibData,
+    //rl_data: RayLibData,
 
     temp_c: TempContainer,
 }
@@ -112,9 +112,8 @@ impl Render {
     pub fn new() -> Render {
         let (width, height) = (640, 480);
 
-        let mut rl_data = RayLibData::new(width, height);
-
-        rl_data.rl.set_target_fps(5);
+        //let mut rl_data = RayLibData::new(width, height);
+        //rl_data.rl.set_target_fps(5);
 
         let screen = Screen {
             width,
@@ -132,7 +131,7 @@ impl Render {
             entities: HashSet::new(),
             component_types: HashSet::new(),
 
-            rl_data,
+            //rl_data,
 
             temp_c,
         };
@@ -161,7 +160,13 @@ impl System for Render {
         //    return;
         //}
         /////
-        if self.rl_data.rl.window_should_close() {
+
+        let mouse_pos;
+//{
+        let rl_data = cm.get_global::<RayLibData>(2).unwrap();
+
+
+        if rl_data.rl.window_should_close() {
             panic!("Exitted..."); // TODO: this condition should rather be somehow signalled to the
                                   // outside world...
         }
@@ -169,36 +174,37 @@ impl System for Render {
         // TODO: point of focus: extract below code into separate system and components
         // ONGOING
 
-        let wheel_move_v = self.rl_data.rl.get_mouse_wheel_move_v();
+        let wheel_move_v = rl_data.rl.get_mouse_wheel_move_v();
 
-        if self.rl_data.rl.is_key_down(KeyboardKey::KEY_RIGHT) {
-            if !(self.temp_c.ball_pos.0 >= (self.rl_data.screen.width)) {
+        if rl_data.rl.is_key_down(KeyboardKey::KEY_RIGHT) {
+            if !(self.temp_c.ball_pos.0 >= (rl_data.screen.width)) {
                 self.temp_c.ball_pos.0 += 2;
             }
         }
-        if self.rl_data.rl.is_key_down(KeyboardKey::KEY_LEFT) {
+        if rl_data.rl.is_key_down(KeyboardKey::KEY_LEFT) {
             if !(self.temp_c.ball_pos.0 <= 0) {
                 self.temp_c.ball_pos.0 -= 2;
             }
         }
-        if self.rl_data.rl.is_key_down(KeyboardKey::KEY_UP) {
+        if rl_data.rl.is_key_down(KeyboardKey::KEY_UP) {
             if !(self.temp_c.ball_pos.1 <= 0) {
                 self.temp_c.ball_pos.1 -= 2;
             }
         }
-        if self.rl_data.rl.is_key_down(KeyboardKey::KEY_DOWN) {
-            if !(self.temp_c.ball_pos.1 >= self.rl_data.screen.height) {
+        if rl_data.rl.is_key_down(KeyboardKey::KEY_DOWN) {
+            if !(self.temp_c.ball_pos.1 >= rl_data.screen.height) {
                 self.temp_c.ball_pos.1 += 2;
             }
         }
 
-        let mouse_pos = self.rl_data.rl.get_mouse_position();
-        let mut d = self.rl_data.rl.begin_drawing(&self.rl_data.raylib_thread);
+        mouse_pos = rl_data.rl.get_mouse_position();
+        let mut d = rl_data.rl.begin_drawing(&rl_data.raylib_thread);
 
         d.draw_circle(self.temp_c.ball_pos.0, self.temp_c.ball_pos.1, 10f32, Color::MAROON);
         d.clear_background(Color::WHITE);
 
         d.draw_circle_v(mouse_pos, 20f32, Color::BLUE);
+//}
 
         for e in self.entities.iter() {
             let c = cm.get::<Coords>(&e);
@@ -262,8 +268,10 @@ impl System for MouseInput {
 fn main() {
     let mut c = Coordinator::new();
 
-//    let (width, height) = (640, 480);
-//    let mut rl_data = RayLibData::new(width, height);
+    let (width, height) = (640, 480);
+    let mut rl_data = RayLibData::new(width, height);
+    rl_data.rl.set_target_fps(5);
+    c.add_global(2, rl_data);
 
     let mouse_coords = Coords { x: 0, y: 0 }; // TODO: remove this
     c.add_global(1, mouse_coords);           // TODO: remove this

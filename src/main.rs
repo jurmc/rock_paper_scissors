@@ -8,8 +8,33 @@ use raylib::prelude::*;
 
 use std::collections::HashSet;
 use std::any::TypeId;
+use std::sync::{Mutex, LazyLock};
 
+pub struct RayLibData {
+    rl: RaylibHandle,
+    raylib_thread: RaylibThread,
+    screen: Screen,
+}
 
+impl RayLibData {
+    pub fn new(width: i32, height: i32) -> RayLibData {
+        let (mut rl, raylib_thread) = raylib::init()
+            .size(width, height)
+            .title("RenderSystem1")
+            .build();
+
+        let screen = Screen {
+            width,
+            height,
+        };
+
+        RayLibData {
+            rl,
+            raylib_thread,
+            screen,
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct Coords {
@@ -70,32 +95,6 @@ impl System for IntegrateVelocity {
                     cm.add(*e, new_coords);
                 }
             }
-        }
-    }
-}
-
-pub struct RayLibData {
-    rl: RaylibHandle,
-    raylib_thread: RaylibThread,
-    screen: Screen,
-}
-
-impl RayLibData {
-    pub fn new(width: i32, height: i32) -> RayLibData {
-        let (mut rl, raylib_thread) = raylib::init()
-            .size(width, height)
-            .title("RenderSystem1")
-            .build();
-
-        let screen = Screen {
-            width,
-            height,
-        };
-
-        RayLibData {
-            rl,
-            raylib_thread,
-            screen,
         }
     }
 }
@@ -243,6 +242,7 @@ impl System for MouseInput {
     }
 
     fn apply(&mut self, cm: &mut ComponentManager) {
+        println!("mouse input: apply, array");
 //        let mouse_pos = self.rl.get_mouse_position();
         //d.draw_circle_v(mouse_pos, 20f32, Color::BLUE);
 //        let coords = Coords {mouse_pos.};
@@ -263,6 +263,7 @@ fn main() {
                                       // also work if move after block of registered component
                                       // types, and adding components to coordinato
     c.register_system(IntegrateVelocity::new());
+    c.register_system(MouseInput::new());
 
     c.register_component::<Coords>();
     c.register_component::<MyColor>();

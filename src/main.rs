@@ -27,8 +27,6 @@ impl RayLibData {
             .title("Updated RenderSystem1")
             .build();
 
-        rl.set_target_fps(5);
-
         let screen = Screen {
             width,
             height,
@@ -115,7 +113,7 @@ pub struct Render {
 impl Render {
     pub fn new(ray_lib_data: Rc<RefCell<RayLibData>>) -> Render {
         let (width, height) = (640, 480);
-        ray_lib_data.borrow().rl.borrow_mut().set_target_fps(5);
+        ray_lib_data.borrow().rl.borrow_mut().set_target_fps(30);
 
         let screen = Screen {
             width,
@@ -285,6 +283,49 @@ impl System for CursorInput {
     }
 }
 
+struct Weight {
+    w: i32,
+}
+
+pub struct Gravity {
+    entities: HashSet<Entity>,
+    component_types: HashSet<TypeId>,
+}
+
+impl Gravity {
+    pub fn new() -> Gravity {
+        Gravity {
+            entities: HashSet::new(),
+            component_types: HashSet::from_iter(vec![
+                ComponentType::of::<Weight>(),
+            ]),
+        }
+    }
+}
+
+impl System for Gravity {
+    fn add(&mut self, e: Entity) {
+        self.entities.insert(e);
+    }
+    fn remove(&mut self, e: Entity) {
+        // TODO: not implemented
+    }
+
+    fn get_component_types(&self) -> &HashSet<TypeId> {
+        &self.component_types
+    }
+
+    fn apply(&mut self, cm: &mut ComponentManager) {
+        for e in self.entities.iter() {
+            let w = cm.get::<Weight>(e).unwrap().w;
+            let new_potential_v = &mut Velocity { vx: 0f64, vy: 0f64 };
+            let v = cm.get::<Velocity>(e).or(Some(new_potential_v)).unwrap();
+            let newv = Velocity { vx: v.vx, vy: v.vy + w as f64 };
+            cm.add::<Velocity>(*e, newv)
+        }
+    }
+}
+
 struct MouseControlled {}
 struct CursorControlled {}
 
@@ -306,6 +347,7 @@ fn main() {
     let cursor = c.get_entity();
     let e1 = c.get_entity();
     let e2 = c.get_entity();
+    let e3 = c.get_entity();
 
     c.register_system(render_sys); // TODO: this block of registered systems should
                                       // also work if move after block of registered component
@@ -313,12 +355,14 @@ fn main() {
     c.register_system(mouse_input_sys);
     c.register_system(cursor_input_sys);
     c.register_system(IntegrateVelocity::new());
+    c.register_system(Gravity::new());
 
     c.register_component::<Coords>();
     c.register_component::<MyColor>();
     c.register_component::<Velocity>();
     c.register_component::<MouseControlled>();
     c.register_component::<CursorControlled>();
+    c.register_component::<Weight>();
 
     c.add_component(mouse, Coords {x: 70, y: 90});
     c.add_component(mouse, MyColor {c: Color::ORANGE});
@@ -329,10 +373,17 @@ fn main() {
     c.add_component(cursor, CursorControlled{});
 
     c.add_component(e1, Coords{x: 20, y: 30});
-    c.add_component(e1, MyColor {c: Color::RED});
+    c.add_component(e1, MyColor {c: Color::GRAY});
+    c.add_component(e1, Velocity{vx: 5f64, vy: 0f64});
+    c.add_component(e1, Weight { w: 1 });
 
     c.add_component(e2, Coords{x: 20, y: 60});
     c.add_component(e2, Velocity{vx: 1f64, vy: 2f64});
+    c.add_component(e2, Weight { w: 1 });
+
+    c.add_component(e3, Coords{x: 500, y: 400});
+    c.add_component(e3, Velocity{vx: -2f64, vy: 0f64});
+    c.add_component(e3, Weight { w: -1 });
 
     loop {
         c.apply_all();

@@ -110,8 +110,6 @@ pub struct Render {
     component_types: HashSet<TypeId>,
 
     ray_lib_data: Rc<RefCell<RayLibData>>,
-
-    temp_c: TempContainer,
 }
 
 impl Render {
@@ -136,8 +134,6 @@ impl Render {
             component_types: HashSet::new(),
 
             ray_lib_data,
-
-            temp_c,
         };
 
         render
@@ -161,7 +157,6 @@ impl System for Render {
         let ray_lib_data = self.ray_lib_data.borrow_mut();
 
         let mut rl= ray_lib_data.rl.borrow_mut();
-        let screen = ray_lib_data.screen.borrow();
         let raylib_thread = ray_lib_data.raylib_thread.borrow();
 
         if rl.window_should_close() {
@@ -169,12 +164,8 @@ impl System for Render {
                                   // outside world...
         }
 
-        // TODO: point of focus: extract below code into separate system and components
-        // ONGOING
 
         let mut d = rl.begin_drawing(&raylib_thread);
-
-        d.draw_circle(self.temp_c.ball_pos.0, self.temp_c.ball_pos.1, 10f32, Color::MAROON);
         d.clear_background(Color::WHITE);
 
         for e in self.entities.iter() {

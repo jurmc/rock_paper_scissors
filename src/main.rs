@@ -193,14 +193,12 @@ impl System for Render {
             }
         }
 
-        let mouse_pos = rl.get_mouse_position();
+        //let mouse_pos = rl.get_mouse_position();
 
         let mut d = rl.begin_drawing(&raylib_thread);
 
         d.draw_circle(self.temp_c.ball_pos.0, self.temp_c.ball_pos.1, 10f32, Color::MAROON);
         d.clear_background(Color::WHITE);
-
-        d.draw_circle_v(mouse_pos, 20f32, Color::BLUE);
 
         for e in self.entities.iter() {
             let c = cm.get::<Coords>(&e);
@@ -228,7 +226,10 @@ impl MouseInput {
     pub fn new(ray_lib_data: Rc<RefCell<RayLibData>>) -> MouseInput {
         MouseInput {
             entities: HashSet::new(),
-            component_types: HashSet::from_iter(vec![ComponentType::of::<Coords>()]),
+            component_types: HashSet::from_iter(vec![
+                ComponentType::of::<Coords>(),
+                ComponentType::of::<MouseControlled>(),
+            ]),
 
             rl: ray_lib_data.borrow().rl.clone(),
         }
@@ -249,9 +250,17 @@ impl System for MouseInput {
 
     fn apply(&mut self, cm: &mut ComponentManager) {
         let mouse_pos = self.rl.borrow().get_mouse_position();
-        println!("Mouse pos: {:?}", mouse_pos);
+
+        for e in self.entities.iter() {
+            cm.add(*e, Coords {
+                x: mouse_pos.x.round() as i32,
+                y: mouse_pos.y.round() as i32 });
+        }
     }
 }
+
+struct MouseControlled {}
+
 fn main() {
 
     let mut globals = Globals::new();
@@ -265,6 +274,7 @@ fn main() {
 
     let mut c = Coordinator::new();
 
+    let mouse = c.get_entity();
     let e1 = c.get_entity();
     let e2 = c.get_entity();
 
@@ -277,6 +287,11 @@ fn main() {
     c.register_component::<Coords>();
     c.register_component::<MyColor>();
     c.register_component::<Velocity>();
+    c.register_component::<MouseControlled>();
+
+    c.add_component(mouse, Coords {x: 70, y: 90});
+    c.add_component(mouse, MyColor {c: Color::ORANGE});
+    c.add_component(mouse, MouseControlled{});
 
     c.add_component(e1, Coords{x: 20, y: 30});
     c.add_component(e1, MyColor {c: Color::RED});

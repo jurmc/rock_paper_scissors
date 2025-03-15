@@ -109,17 +109,15 @@ pub struct Render {
     entities: HashSet<Entity>,
     component_types: HashSet<TypeId>,
 
-    //rl_data: RayLibData,
-    ray_lib_data: RayLibData,
+    ray_lib_data: Rc<RefCell<RayLibData>>,
 
     temp_c: TempContainer,
 }
 
 impl Render {
-    pub fn new(ray_lib_data: RayLibData) -> Render {
+    pub fn new(ray_lib_data: Rc<RefCell<RayLibData>>) -> Render {
         let (width, height) = (640, 480);
-
-        ray_lib_data.rl.borrow_mut().set_target_fps(5);
+        ray_lib_data.borrow().rl.borrow_mut().set_target_fps(5);
 
         let screen = Screen {
             width,
@@ -161,8 +159,11 @@ impl System for Render {
     fn apply(&mut self, cm: &mut ComponentManager) {
         let mouse_pos;
 
-        let mut rl= self.ray_lib_data.rl.borrow_mut();
-        let screen = self.ray_lib_data.screen.borrow();
+        let ray_lib_data = self.ray_lib_data.borrow_mut();
+
+        let mut rl= ray_lib_data.rl.borrow_mut();
+        let screen = ray_lib_data.screen.borrow();
+        let raylib_thread = ray_lib_data.raylib_thread.borrow();
 
         if rl.window_should_close() {
             panic!("Exitted..."); // TODO: this condition should rather be somehow signalled to the
@@ -196,7 +197,6 @@ impl System for Render {
         }
 
         mouse_pos = rl.get_mouse_position();
-        let raylib_thread = self.ray_lib_data.raylib_thread.borrow();
         let mut d = rl.begin_drawing(&raylib_thread);
 
         d.draw_circle(self.temp_c.ball_pos.0, self.temp_c.ball_pos.1, 10f32, Color::MAROON);
@@ -254,8 +254,9 @@ fn main() {
 
     let (width, height) = (640, 480);
     let rl_data = RayLibData::new(width, height);
+    let rl_data = Rc::new(RefCell::new(rl_data));
 
-    let render_sys = Render::new(rl_data);
+    let render_sys = Render::new(rl_data.clone());
 
     let mut c = Coordinator::new();
 

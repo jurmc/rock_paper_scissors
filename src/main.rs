@@ -1,8 +1,8 @@
 use ecs::Entity;
-use ecs::coordinator::Coordinator;    // TODO: remove coordinatro from this path
-use ecs::component::ComponentManager; // TODO: remove component from this path
+use ecs::Coordinator;
+use ecs::ComponentManager;
 use ecs::ComponentType;
-use ecs::system::System;              // TODO: remove system from this path
+use ecs::System;
 use ecs::Globals;
 
 use raylib::prelude::*;
@@ -172,29 +172,6 @@ impl System for Render {
         // TODO: point of focus: extract below code into separate system and components
         // ONGOING
 
-        if rl.is_key_down(KeyboardKey::KEY_RIGHT) {
-            if !(self.temp_c.ball_pos.0 >= (screen.width)) {
-                self.temp_c.ball_pos.0 += 2;
-            }
-        }
-        if rl.is_key_down(KeyboardKey::KEY_LEFT) {
-            if !(self.temp_c.ball_pos.0 <= 0) {
-                self.temp_c.ball_pos.0 -= 2;
-            }
-        }
-        if rl.is_key_down(KeyboardKey::KEY_UP) {
-            if !(self.temp_c.ball_pos.1 <= 0) {
-                self.temp_c.ball_pos.1 -= 2;
-            }
-        }
-        if rl.is_key_down(KeyboardKey::KEY_DOWN) {
-            if !(self.temp_c.ball_pos.1 >= screen.height) {
-                self.temp_c.ball_pos.1 += 2;
-            }
-        }
-
-        //let mouse_pos = rl.get_mouse_position();
-
         let mut d = rl.begin_drawing(&raylib_thread);
 
         d.draw_circle(self.temp_c.ball_pos.0, self.temp_c.ball_pos.1, 10f32, Color::MAROON);
@@ -259,7 +236,66 @@ impl System for MouseInput {
     }
 }
 
+pub struct CursorInput {
+    entities: HashSet<Entity>,
+    component_types: HashSet<TypeId>,
+
+    rl: Rc<RefCell<RaylibHandle>>,
+}
+
+impl CursorInput {
+    pub fn new(ray_lib_data: Rc<RefCell<RayLibData>>) -> CursorInput {
+        CursorInput {
+            entities: HashSet::new(),
+            component_types: HashSet::from_iter(vec![
+                ComponentType::of::<Coords>(),
+                ComponentType::of::<CursorControlled>(),
+            ]),
+
+            rl: ray_lib_data.borrow().rl.clone(),
+        }
+    }
+}
+
+impl System for CursorInput {
+    fn add(&mut self, e: Entity) {
+        self.entities.insert(e);
+    }
+    fn remove(&mut self, e: Entity) {
+        // TODO: not implemented
+    }
+
+    fn get_component_types(&self) -> &HashSet<TypeId> {
+        &self.component_types
+    }
+
+    fn apply(&mut self, cm: &mut ComponentManager) {
+        let (mut inc_x, mut inc_y) = (0, 0);
+        let rl = self.rl.borrow();
+
+        if rl.is_key_down(KeyboardKey::KEY_RIGHT) {
+            inc_x += 1;
+        }
+        if rl.is_key_down(KeyboardKey::KEY_LEFT) {
+            inc_x -= 1;
+        }
+        if rl.is_key_down(KeyboardKey::KEY_UP) {
+            inc_y -= 1;
+        }
+        if rl.is_key_down(KeyboardKey::KEY_DOWN) {
+            inc_y +=1;
+        }
+
+        for e in self.entities.iter() {
+            let old = cm.get::<Coords>(e).unwrap();
+            let new = Coords { x: old.x + inc_x, y: old.y + inc_y };
+            cm.add(*e, new);
+        }
+    }
+}
+
 struct MouseControlled {}
+struct CursorControlled {}
 
 fn main() {
 
@@ -271,10 +307,12 @@ fn main() {
 
     let render_sys = Render::new(rl_data.clone());
     let mouse_input_sys = MouseInput::new(rl_data.clone());
+    let cursor_input_sys = CursorInput::new(rl_data.clone());
 
     let mut c = Coordinator::new();
 
     let mouse = c.get_entity();
+    let cursor = c.get_entity();
     let e1 = c.get_entity();
     let e2 = c.get_entity();
 
@@ -282,16 +320,22 @@ fn main() {
                                       // also work if move after block of registered component
                                       // types, and adding components to coordinato
     c.register_system(mouse_input_sys);
+    c.register_system(cursor_input_sys);
     c.register_system(IntegrateVelocity::new());
 
     c.register_component::<Coords>();
     c.register_component::<MyColor>();
     c.register_component::<Velocity>();
     c.register_component::<MouseControlled>();
+    c.register_component::<CursorControlled>();
 
     c.add_component(mouse, Coords {x: 70, y: 90});
     c.add_component(mouse, MyColor {c: Color::ORANGE});
     c.add_component(mouse, MouseControlled{});
+
+    c.add_component(cursor, Coords { x: 30, y: 130 });
+    c.add_component(cursor, MyColor {c: Color::INDIGO});
+    c.add_component(cursor, CursorControlled{});
 
     c.add_component(e1, Coords{x: 20, y: 30});
     c.add_component(e1, MyColor {c: Color::RED});

@@ -24,7 +24,7 @@ impl RayLibData {
     pub fn new(width: i32, height: i32) -> RayLibData {
         let (mut rl, raylib_thread) = raylib::init()
             .size(width, height)
-            .title("RenderSystem1")
+            .title("Updated RenderSystem1")
             .build();
 
         rl.set_target_fps(5);
@@ -157,7 +157,6 @@ impl System for Render {
     }
 
     fn apply(&mut self, cm: &mut ComponentManager) {
-        let mouse_pos;
 
         let ray_lib_data = self.ray_lib_data.borrow_mut();
 
@@ -172,8 +171,6 @@ impl System for Render {
 
         // TODO: point of focus: extract below code into separate system and components
         // ONGOING
-
-        let wheel_move_v = rl.get_mouse_wheel_move_v();
 
         if rl.is_key_down(KeyboardKey::KEY_RIGHT) {
             if !(self.temp_c.ball_pos.0 >= (screen.width)) {
@@ -196,7 +193,8 @@ impl System for Render {
             }
         }
 
-        mouse_pos = rl.get_mouse_position();
+        let mouse_pos = rl.get_mouse_position();
+
         let mut d = rl.begin_drawing(&raylib_thread);
 
         d.draw_circle(self.temp_c.ball_pos.0, self.temp_c.ball_pos.1, 10f32, Color::MAROON);
@@ -222,13 +220,17 @@ impl System for Render {
 pub struct MouseInput {
     entities: HashSet<Entity>,
     component_types: HashSet<TypeId>,
+
+    rl: Rc<RefCell<RaylibHandle>>,
 }
 
 impl MouseInput {
-    pub fn new() -> MouseInput {
+    pub fn new(ray_lib_data: Rc<RefCell<RayLibData>>) -> MouseInput {
         MouseInput {
             entities: HashSet::new(),
             component_types: HashSet::from_iter(vec![ComponentType::of::<Coords>()]),
+
+            rl: ray_lib_data.borrow().rl.clone(),
         }
     }
 }
@@ -246,6 +248,8 @@ impl System for MouseInput {
     }
 
     fn apply(&mut self, cm: &mut ComponentManager) {
+        let mouse_pos = self.rl.borrow().get_mouse_position();
+        println!("Mouse pos: {:?}", mouse_pos);
     }
 }
 fn main() {
@@ -257,6 +261,7 @@ fn main() {
     let rl_data = Rc::new(RefCell::new(rl_data));
 
     let render_sys = Render::new(rl_data.clone());
+    let mouse_input_sys = MouseInput::new(rl_data.clone());
 
     let mut c = Coordinator::new();
 
@@ -266,8 +271,8 @@ fn main() {
     c.register_system(render_sys); // TODO: this block of registered systems should
                                       // also work if move after block of registered component
                                       // types, and adding components to coordinato
+    c.register_system(mouse_input_sys);
     c.register_system(IntegrateVelocity::new());
-    c.register_system(MouseInput::new());
 
     c.register_component::<Coords>();
     c.register_component::<MyColor>();

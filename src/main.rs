@@ -3,19 +3,21 @@ use ecs::coordinator::Coordinator;    // TODO: remove coordinatro from this path
 use ecs::component::ComponentManager; // TODO: remove component from this path
 use ecs::ComponentType;
 use ecs::system::System;              // TODO: remove system from this path
+use ecs::Globals;
 
 use raylib::prelude::*;
 
 use std::collections::HashSet;
 use std::any::TypeId;
-use std::sync::{Mutex, LazyLock};
+use std::rc::Rc;
+use std::cell::RefCell;
 
 // TODO: all geters in ECS needs to have mutable and imutable versions
 
 pub struct RayLibData {
-    rl: RaylibHandle,
-    raylib_thread: RaylibThread,
-    screen: Screen,
+    rl: Rc<RefCell<RaylibHandle>>,
+    raylib_thread: Rc<RefCell<RaylibThread>>,
+    screen: Rc<RefCell<Screen>>,
 }
 
 impl RayLibData {
@@ -25,15 +27,17 @@ impl RayLibData {
             .title("RenderSystem1")
             .build();
 
+        rl.set_target_fps(5);
+
         let screen = Screen {
             width,
             height,
         };
 
         RayLibData {
-            rl,
-            raylib_thread,
-            screen,
+            rl: Rc::new(RefCell::new(rl)).clone(),
+            raylib_thread: Rc::new(RefCell::new(raylib_thread)).clone(),
+            screen: Rc::new(RefCell::new(screen)).clone(),
         }
     }
 }
@@ -106,16 +110,16 @@ pub struct Render {
     component_types: HashSet<TypeId>,
 
     //rl_data: RayLibData,
+    ray_lib_data: RayLibData,
 
     temp_c: TempContainer,
 }
 
 impl Render {
-    pub fn new() -> Render {
+    pub fn new(ray_lib_data: RayLibData) -> Render {
         let (width, height) = (640, 480);
 
-        //let mut rl_data = RayLibData::new(width, height);
-        //rl_data.rl.set_target_fps(5);
+        ray_lib_data.rl.borrow_mut().set_target_fps(5);
 
         let screen = Screen {
             width,
@@ -133,7 +137,7 @@ impl Render {
             entities: HashSet::new(),
             component_types: HashSet::new(),
 
-            //rl_data,
+            ray_lib_data,
 
             temp_c,
         };
@@ -155,20 +159,12 @@ impl System for Render {
     }
 
     fn apply(&mut self, cm: &mut ComponentManager) {
-        ////
-        ////let mut rl_data = cm.get::<RayLibData>();
-        //if rl_data = None {
-        //    println!("RayLibData not initialized. Cannot render...");
-        //    return;
-        //}
-        /////
-
         let mouse_pos;
-//{
-        let rl_data = cm.get_global::<RayLibData>(2).unwrap();
 
+        let mut rl= self.ray_lib_data.rl.borrow_mut();
+        let screen = self.ray_lib_data.screen.borrow();
 
-        if rl_data.rl.window_should_close() {
+        if rl.window_should_close() {
             panic!("Exitted..."); // TODO: this condition should rather be somehow signalled to the
                                   // outside world...
         }
@@ -176,37 +172,37 @@ impl System for Render {
         // TODO: point of focus: extract below code into separate system and components
         // ONGOING
 
-        let wheel_move_v = rl_data.rl.get_mouse_wheel_move_v();
+        let wheel_move_v = rl.get_mouse_wheel_move_v();
 
-        if rl_data.rl.is_key_down(KeyboardKey::KEY_RIGHT) {
-            if !(self.temp_c.ball_pos.0 >= (rl_data.screen.width)) {
+        if rl.is_key_down(KeyboardKey::KEY_RIGHT) {
+            if !(self.temp_c.ball_pos.0 >= (screen.width)) {
                 self.temp_c.ball_pos.0 += 2;
             }
         }
-        if rl_data.rl.is_key_down(KeyboardKey::KEY_LEFT) {
+        if rl.is_key_down(KeyboardKey::KEY_LEFT) {
             if !(self.temp_c.ball_pos.0 <= 0) {
                 self.temp_c.ball_pos.0 -= 2;
             }
         }
-        if rl_data.rl.is_key_down(KeyboardKey::KEY_UP) {
+        if rl.is_key_down(KeyboardKey::KEY_UP) {
             if !(self.temp_c.ball_pos.1 <= 0) {
                 self.temp_c.ball_pos.1 -= 2;
             }
         }
-        if rl_data.rl.is_key_down(KeyboardKey::KEY_DOWN) {
-            if !(self.temp_c.ball_pos.1 >= rl_data.screen.height) {
+        if rl.is_key_down(KeyboardKey::KEY_DOWN) {
+            if !(self.temp_c.ball_pos.1 >= screen.height) {
                 self.temp_c.ball_pos.1 += 2;
             }
         }
 
-        mouse_pos = rl_data.rl.get_mouse_position();
-        let mut d = rl_data.rl.begin_drawing(&rl_data.raylib_thread);
+        mouse_pos = rl.get_mouse_position();
+        let raylib_thread = self.ray_lib_data.raylib_thread.borrow();
+        let mut d = rl.begin_drawing(&raylib_thread);
 
         d.draw_circle(self.temp_c.ball_pos.0, self.temp_c.ball_pos.1, 10f32, Color::MAROON);
         d.clear_background(Color::WHITE);
 
         d.draw_circle_v(mouse_pos, 20f32, Color::BLUE);
-//}
 
         for e in self.entities.iter() {
             let c = cm.get::<Coords>(&e);
@@ -250,38 +246,23 @@ impl System for MouseInput {
     }
 
     fn apply(&mut self, cm: &mut ComponentManager) {
-        let mut mouse_coords = cm.get_global::<Coords>(1).unwrap();
-
-        println!("mouse input, coords {:?}", mouse_coords);
-
-        mouse_coords.x += 1;
-        mouse_coords.y += 1;
-//        let mouse_pos = self.rl.get_mouse_position();
-        //d.draw_circle_v(mouse_pos, 20f32, Color::BLUE);
-//        let coords = Coords {mouse_pos.};
-//
-//        for e in self.entities.iter() {
-//            let coords = cm.get::<Coords>(e);
-//            cm.add
-//        }
-
     }
 }
 fn main() {
-    let mut c = Coordinator::new();
+
+    let mut globals = Globals::new();
 
     let (width, height) = (640, 480);
-    let mut rl_data = RayLibData::new(width, height);
-    rl_data.rl.set_target_fps(5);
-    c.add_global(2, rl_data);
+    let rl_data = RayLibData::new(width, height);
 
-    let mouse_coords = Coords { x: 0, y: 0 }; // TODO: remove this
-    c.add_global(1, mouse_coords);           // TODO: remove this
+    let render_sys = Render::new(rl_data);
+
+    let mut c = Coordinator::new();
 
     let e1 = c.get_entity();
     let e2 = c.get_entity();
 
-    c.register_system(Render::new()); // TODO: this block of registered systems should
+    c.register_system(render_sys); // TODO: this block of registered systems should
                                       // also work if move after block of registered component
                                       // types, and adding components to coordinato
     c.register_system(IntegrateVelocity::new());

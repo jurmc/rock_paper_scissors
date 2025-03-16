@@ -7,4 +7,5 @@ edition = "2021"
 #raylib = { git = "https://github.com/raylib-rs/raylib-rs.git" }
 raylib = { git = "https://github.com/raylib-rs/raylib-rs.git", features = ["opengl_21"] }
 ecs = { git = "https://github.com/jurmc/ecs.git" }
+rand = "0.9.0"
 

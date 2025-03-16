@@ -6,6 +6,7 @@ use ecs::System;
 use ecs::Globals;
 
 use raylib::prelude::*;
+use rand::Rng;
 
 use std::collections::HashSet;
 use std::any::TypeId;
@@ -64,8 +65,73 @@ pub struct Screen {
     height: i32
 }
 
-struct TempContainer {
-    ball_pos: (i32, i32),
+pub struct Reaper {
+    entities: HashSet<Entity>,
+    component_types: HashSet<TypeId>,
+}
+
+impl Reaper {
+    pub fn new() -> Reaper {
+        Reaper {
+            entities: HashSet::new(),
+            component_types: HashSet::from_iter(vec![
+                ComponentType::of::<TTL>(),
+            ]),
+        }
+    }
+}
+
+impl System for Reaper {
+    fn add(&mut self, e: Entity) {
+        self.entities.insert(e);
+    }
+    fn remove(&mut self, e: Entity) {
+        // TODO: not implemented
+    }
+
+    fn get_component_types(&self) -> &HashSet<TypeId> {
+        &self.component_types
+    }
+
+    fn apply(&mut self, cm: &mut ComponentManager) -> Box<dyn Fn(&mut Coordinator)> {
+        for e in self.entities.iter() {
+            let mut kill_flag = false;
+            if let Some(ttl) = cm.get::<TTL>(e) {
+                println!("ttl: {}", ttl.ttl);
+                ttl.ttl -= 1;
+
+                if ttl.ttl <= 0 {
+                    kill_flag = true;
+                }
+        
+                if kill_flag {
+                    cm.remove::<TTL>(e);
+                    if let Some(coords) = cm.get::<Coords>(e) {
+                        let (x, y) = (coords.x, coords.y);
+                        return Box::new(move |c| {
+                            for _ in 1..2 {
+                                for _ in 1..10 {
+                                    let v = 20f32;
+                                    let angle_deg = rand::rng().random_range(1f32..=360f32);
+                                    let angle_rad = angle_deg / std::f32::consts::PI;
+                                    let vx = (v * angle_rad.cos()) as f64;
+                                    let vy = (v * angle_rad.sin()) as f64;
+
+                                    let new_e = c.get_entity();
+                                    c.add_component(new_e, Coords {x, y});
+                                    c.add_component(new_e, Velocity {vx, vy});
+                                    c.add_component(new_e, Weight { w: 2 });
+                                    c.add_component(new_e, MySize { s: 2f32 });
+                                    c.add_component(new_e, MyColor { c: Color::BLUEVIOLET });
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        }
+        Box::new(| _coordinator | {})
+    }
 }
 
 pub struct IntegrateVelocity {
@@ -118,22 +184,9 @@ pub struct Render {
 
 impl Render {
     pub fn new(ray_lib_data: Rc<RefCell<RayLibData>>) -> Render {
-        let (width, height) = (640, 480);
         ray_lib_data.borrow().rl.borrow_mut().set_target_fps(20);
 
-        let screen = Screen {
-            width,
-            height,
-        };
-
-        let ball_pos = (screen.width / 2, screen.height / 2);
-
-        let temp_c = TempContainer {
-            ball_pos,
-        };
-
-
-        let render = Render {
+            let render = Render {
             entities: HashSet::new(),
             component_types: HashSet::new(),
 
@@ -241,8 +294,9 @@ impl System for MouseInput {
                 let coords = Coords { x, y };
                 println!("our closure triggered");
                 c.add_component(e, coords);
-                c.add_component(e, MySize { s: 2f32 });
-                c.add_component(e, Weight { w: 1 });
+                c.add_component(e, MySize { s: 3f32 });
+                //c.add_component(e, Weight { w: 1 });
+                c.add_component(e, TTL { ttl: 40 });
                 c.add_component(e, MyColor { c: Color::INDIANRED });
             })
         }
@@ -311,6 +365,10 @@ impl System for CursorInput {
     }
 }
 
+struct TTL {
+    ttl: i32,
+}
+
 struct Weight {
     w: i32,
 }
@@ -375,6 +433,7 @@ fn main() {
 
     let mouse = c.get_entity();
     let cursor = c.get_entity();
+    let e0 = c.get_entity();
     let e1 = c.get_entity();
     let e2 = c.get_entity();
     let e3 = c.get_entity();
@@ -386,6 +445,7 @@ fn main() {
     c.register_system(cursor_input_sys);
     c.register_system(IntegrateVelocity::new());
     c.register_system(Gravity::new());
+    c.register_system(Reaper::new());
 
     c.register_component::<Coords>();
     c.register_component::<MyColor>();
@@ -394,6 +454,7 @@ fn main() {
     c.register_component::<CursorControlled>();
     c.register_component::<Weight>();
     c.register_component::<MySize>();
+    c.register_component::<TTL>();
 
     c.add_component(mouse, Coords {x: 70, y: 90});
     c.add_component(mouse, MyColor {c: Color::ORANGE});
@@ -403,6 +464,10 @@ fn main() {
     c.add_component(cursor, Coords { x: 30, y: 130 });
     c.add_component(cursor, MyColor {c: Color::INDIGO});
     c.add_component(cursor, CursorControlled{});
+
+    c.add_component(e0, Coords { x: 230, y: 130 });
+    c.add_component(e0, MyColor {c: Color::INDIGO});
+    c.add_component(e0, TTL { ttl: 40 });
 
     c.add_component(e1, Coords{x: 20, y: 30});
     c.add_component(e1, MyColor {c: Color::GRAY});

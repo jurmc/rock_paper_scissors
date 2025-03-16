@@ -46,6 +46,10 @@ pub struct Coords {
     y: i32,
 }
 
+pub struct MySize {
+    s: f32,
+}
+
 pub struct MyColor {
     c: Color,
 }
@@ -115,7 +119,7 @@ pub struct Render {
 impl Render {
     pub fn new(ray_lib_data: Rc<RefCell<RayLibData>>) -> Render {
         let (width, height) = (640, 480);
-        ray_lib_data.borrow().rl.borrow_mut().set_target_fps(5);
+        ray_lib_data.borrow().rl.borrow_mut().set_target_fps(20);
 
         let screen = Screen {
             width,
@@ -171,11 +175,15 @@ impl System for Render {
             let c = cm.get::<Coords>(&e);
             if let Some(c) = c {
                 let c = Coords {x: c.x, y: c.y};
+                let size = match cm.get::<MySize>(&e) {
+                    Some(size) => size.s,
+                    None => 10f32,
+                };
                 let color = match cm.get::<MyColor>(&e) {
                     Some(color) => color,
                     None => &mut MyColor { c: Color::CYAN},
                 };
-                d.draw_circle(c.x, c.y, 5f32, color.c);
+                d.draw_circle(c.x, c.y, size, color.c);
             }
         }
 
@@ -217,12 +225,26 @@ impl System for MouseInput {
     }
 
     fn apply(&mut self, cm: &mut ComponentManager) -> Box<dyn Fn(&mut Coordinator)> {
-        let mouse_pos = self.rl.borrow().get_mouse_position();
+        let mouse_pos = self.rl.borrow().get_mouse_position().clone();
 
         for e in self.entities.iter() {
             cm.add(*e, Coords {
                 x: mouse_pos.x.round() as i32,
                 y: mouse_pos.y.round() as i32 });
+        }
+
+        if self.rl.borrow().is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT) {
+            println!("our closure defined");
+            let (x, y) = (mouse_pos.x.round() as i32, mouse_pos.y.round() as i32 );
+            return Box::new(move | c| {
+                let e = c.get_entity();
+                let coords = Coords { x, y };
+                println!("our closure triggered");
+                c.add_component(e, coords);
+                c.add_component(e, MySize { s: 2f32 });
+                c.add_component(e, Weight { w: 1 });
+                c.add_component(e, MyColor { c: Color::INDIANRED });
+            })
         }
 
         Box::new(| _ | {})
@@ -371,10 +393,12 @@ fn main() {
     c.register_component::<MouseControlled>();
     c.register_component::<CursorControlled>();
     c.register_component::<Weight>();
+    c.register_component::<MySize>();
 
     c.add_component(mouse, Coords {x: 70, y: 90});
     c.add_component(mouse, MyColor {c: Color::ORANGE});
     c.add_component(mouse, MouseControlled{});
+    c.add_component(mouse, MySize { s: 0f32 });
 
     c.add_component(cursor, Coords { x: 30, y: 130 });
     c.add_component(cursor, MyColor {c: Color::INDIGO});
@@ -394,6 +418,9 @@ fn main() {
     c.add_component(e3, Weight { w: -1 });
 
     loop {
-        c.apply_all();
+        let updates = c.apply_all();
+        for update in updates.iter() {
+            update(&mut c);
+        }
     }
 }

@@ -90,7 +90,7 @@ impl System for IntegrateVelocity {
         &self.component_types
     }
 
-    fn apply(&mut self, cm: &mut ComponentManager) {
+    fn apply(&mut self, cm: &mut ComponentManager) -> Box<dyn Fn(&mut Coordinator)> {
         for e in self.entities.iter() {
             if let Some(v) = cm.get::<Velocity>(e) {
                 let v = Velocity {vx: v.vx, vy: v.vy};
@@ -100,6 +100,8 @@ impl System for IntegrateVelocity {
                 }
             }
         }
+
+        Box::new(| _coordinator | {})
     }
 }
 
@@ -113,7 +115,7 @@ pub struct Render {
 impl Render {
     pub fn new(ray_lib_data: Rc<RefCell<RayLibData>>) -> Render {
         let (width, height) = (640, 480);
-        ray_lib_data.borrow().rl.borrow_mut().set_target_fps(30);
+        ray_lib_data.borrow().rl.borrow_mut().set_target_fps(5);
 
         let screen = Screen {
             width,
@@ -150,8 +152,7 @@ impl System for Render {
         &self.component_types
     }
 
-    fn apply(&mut self, cm: &mut ComponentManager) {
-
+    fn apply(&mut self, cm: &mut ComponentManager) -> Box<dyn Fn(&mut Coordinator)> {
         let ray_lib_data = self.ray_lib_data.borrow_mut();
 
         let mut rl= ray_lib_data.rl.borrow_mut();
@@ -178,6 +179,7 @@ impl System for Render {
             }
         }
 
+        Box::new(| _coordinator | {})
     }
 }
 
@@ -214,7 +216,7 @@ impl System for MouseInput {
         &self.component_types
     }
 
-    fn apply(&mut self, cm: &mut ComponentManager) {
+    fn apply(&mut self, cm: &mut ComponentManager) -> Box<dyn Fn(&mut Coordinator)> {
         let mouse_pos = self.rl.borrow().get_mouse_position();
 
         for e in self.entities.iter() {
@@ -222,6 +224,8 @@ impl System for MouseInput {
                 x: mouse_pos.x.round() as i32,
                 y: mouse_pos.y.round() as i32 });
         }
+
+        Box::new(| _ | {})
     }
 }
 
@@ -258,7 +262,7 @@ impl System for CursorInput {
         &self.component_types
     }
 
-    fn apply(&mut self, cm: &mut ComponentManager) {
+    fn apply(&mut self, cm: &mut ComponentManager) -> Box<dyn Fn(&mut Coordinator)> {
         let (mut inc_x, mut inc_y) = (0, 0);
         let rl = self.rl.borrow();
 
@@ -280,6 +284,8 @@ impl System for CursorInput {
             let new = Coords { x: old.x + inc_x, y: old.y + inc_y };
             cm.add(*e, new);
         }
+
+        Box::new(| _  | {})
     }
 }
 
@@ -315,7 +321,7 @@ impl System for Gravity {
         &self.component_types
     }
 
-    fn apply(&mut self, cm: &mut ComponentManager) {
+    fn apply(&mut self, cm: &mut ComponentManager) -> Box<dyn Fn(&mut Coordinator)> {
         for e in self.entities.iter() {
             let w = cm.get::<Weight>(e).unwrap().w;
             let new_potential_v = &mut Velocity { vx: 0f64, vy: 0f64 };
@@ -323,6 +329,8 @@ impl System for Gravity {
             let newv = Velocity { vx: v.vx, vy: v.vy + w as f64 };
             cm.add::<Velocity>(*e, newv)
         }
+
+        Box::new(| _ | {})
     }
 }
 

@@ -96,14 +96,14 @@ impl System for Reaper {
     fn apply(&mut self, cm: &mut ComponentManager) -> Box<dyn Fn(&mut Coordinator)> {
         for e in self.entities.iter() {
             let mut kill_flag = false;
-            if let Some(ttl) = cm.get::<TTL>(e) {
+            if let Some(ttl) = cm.get_mut::<TTL>(e) {
                 println!("ttl: {}", ttl.ttl);
                 ttl.ttl -= 1;
 
                 if ttl.ttl <= 0 {
                     kill_flag = true;
                 }
-        
+
                 if kill_flag {
                     cm.remove::<TTL>(e);
                     if let Some(coords) = cm.get::<Coords>(e) {

@@ -97,7 +97,6 @@ impl System for Reaper {
         for e in self.entities.iter() {
             let mut kill_flag = false;
             if let Some(ttl) = cm.get_mut::<TTL>(e) {
-                println!("ttl: {}", ttl.ttl);
                 ttl.ttl -= 1;
 
                 if ttl.ttl <= 0 {
@@ -287,12 +286,10 @@ impl System for MouseInput {
         }
 
         if self.rl.borrow().is_mouse_button_pressed(MouseButton::MOUSE_BUTTON_LEFT) {
-            println!("our closure defined");
             let (x, y) = (mouse_pos.x.round() as i32, mouse_pos.y.round() as i32 );
             return Box::new(move | c| {
                 let e = c.get_entity();
                 let coords = Coords { x, y };
-                println!("our closure triggered");
                 c.add_component(e, coords);
                 c.add_component(e, MySize { s: 3f32 });
                 //c.add_component(e, Weight { w: 1 });

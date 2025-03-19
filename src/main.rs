@@ -25,8 +25,10 @@ pub struct RayLibData {
 
 impl RayLibData {
     pub fn new(width: i32, height: i32) -> RayLibData {
+        let gui_width = 240;
+
         let (mut rl, raylib_thread) = raylib::init()
-            .size(width, height)
+            .size(width + gui_width, height)
             .title("ECS demo")
             .build();
 

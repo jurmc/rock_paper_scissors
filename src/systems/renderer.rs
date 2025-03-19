@@ -61,7 +61,10 @@ impl System for Renderer {
 
 
         let mut d = rl.begin_drawing(&raylib_thread);
-        d.clear_background(Color::WHITE);
+        d.clear_background(Color::DARKGRAY);
+        let screen = ray_lib_data.screen.borrow();
+        d.draw_rectangle(2, 2, screen.width - 4, screen.height - 4, Color::GRAY);
+        d.draw_rectangle(screen.width , 2, 240-2, screen.height - 4, Color::GRAY);
 
         for e in self.entities.iter() {
             let c = cm.get::<Coords>(&e);

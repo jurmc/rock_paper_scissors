@@ -13,13 +13,16 @@ use raylib::prelude::*;
 use std::collections::HashSet;
 use std::rc::Rc;
 use std::cell::RefCell;
+use std::boxed::Box;
 
 pub struct Renderer {
     entities: HashSet<Entity>,
     component_types: HashSet<ComponentType>,
 
     ray_lib_data: Rc<RefCell<RayLibData>>,
+    draw_cmds: Box<dyn Fn(&mut RaylibDrawHandle)>,
 }
+
 
 impl Renderer {
     pub fn new(ray_lib_data: Rc<RefCell<RayLibData>>) -> Renderer {
@@ -30,9 +33,40 @@ impl Renderer {
             component_types: HashSet::new(),
 
             ray_lib_data,
+            draw_cmds: Renderer::empty_cmds(),
         };
 
         renderer
+    }
+
+    pub fn draw_buffered_cmds(&mut self, d: &mut RaylibDrawHandle) {
+        let cmds = &mut self.draw_cmds;
+        cmds(d);
+        self.draw_cmds = Renderer::empty_cmds();
+    }
+
+    fn empty_cmds() -> Box<dyn Fn(&mut RaylibDrawHandle)> {
+        Box::new(|_| {})
+    }
+
+    // Extract this to main game loop
+    fn draw_gui(&self, d: &mut RaylibDrawHandle, gui_x: i32, gui_y: i32) {
+        d.draw_line(30, 30, 130, 130, Color::DEEPSKYBLUE);
+
+        d.gui_label(
+            rrect(gui_x + 5, gui_y + 5, 100, 30),
+            "Entities - label"
+            );
+
+        if d.gui_button( rrect(gui_x + 5, gui_y + 35, 100, 30), "Add") {
+            println!("entities.push_str(\"\nentityX\");");
+        }
+
+        d.gui_list_view(
+            rrect(gui_x +5, gui_y + 70, 100, 200),
+            "abc\ndef\nghjikl",
+            &mut 1,
+            &mut 1);
     }
 }
 
@@ -60,11 +94,16 @@ impl System for Renderer {
         }
 
 
+
         let mut d = rl.begin_drawing(&raylib_thread);
-        d.clear_background(Color::DARKGRAY);
         let screen = ray_lib_data.screen.borrow();
-        d.draw_rectangle(2, 2, screen.width - 4, screen.height - 4, Color::GRAY);
-        d.draw_rectangle(screen.width , 2, 240-2, screen.height - 4, Color::GRAY);
+
+        d.clear_background(Color::DARKGRAY);
+        //d.draw_rectangle(2, 2, screen.width - 4, screen.height - 4, Color::GRAY);
+        //d.draw_rectangle(screen.width , 2, 240-2, screen.height - 4, Color::GRAY);
+
+        let (gui_x, gui_y) = (screen.width, 0);
+        self.draw_gui(&mut d, gui_x, gui_y);
 
         for e in self.entities.iter() {
             let c = cm.get::<Coords>(&e);
@@ -81,6 +120,10 @@ impl System for Renderer {
                 d.draw_circle(c.x, c.y, size, color.c);
             }
         }
+
+        self.draw_cmds = Box::new(|h| {
+            h.draw_circle(50, 150, 30f32, Color::DEEPPINK);
+        });
 
         Box::new(| _coordinator | {})
     }
